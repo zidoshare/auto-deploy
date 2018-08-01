@@ -1,0 +1,27 @@
+##############
+# 最全示例配置 #
+##############
+#各项路径配置
+[location]
+projects = "/home/zido/java/projects"
+bin = "/home/zido/java/bin"
+log = "/home/zido/java/logs"
+tmp = "/home/zido/java/bin/.temps"
+java = "java"
+
+#git相关配置
+[git]
+remote = "origin"
+branch = "test"
+prefix = "git@github.com/xxx"
+#maven相关配置
+[maven]
+bin = "mvn"
+repository = "/home/zido/.m2/repository"
+#打包相关配置
+[package]
+env = "test"
+target = "target" #relative dir
+#依赖相关配置
+[dependencies]
+update = ["site.zido:demo:0.0.1"]

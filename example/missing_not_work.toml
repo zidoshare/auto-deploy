@@ -1,0 +1,19 @@
+# 缺少某些参数的配置
+# not works
+
+#各项路径配置
+[location]
+projects = "/home/zido/java/projects"
+bin = "/home/zido/java/bin"
+log = "/home/zido/java/logs"
+tmp = "/home/zido/java/bin/.temps"
+java = "java"
+
+#git相关配置
+[git]
+remote = "origin"
+branch = "test"
+#maven相关配置
+[maven]
+bin = "mvn"
+repository = "/home/zido/.m2/repository"
