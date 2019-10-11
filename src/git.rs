@@ -9,6 +9,7 @@ pub fn pull_projects(
     remote: &str,
     branch: &str,
 ) -> bool {
+    
     println!("pulling {}...", remote_git_path);
     if !path_exists(local_project_path) {
         println!("git project path exists:{}", local_project_path);

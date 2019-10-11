@@ -1,6 +1,7 @@
 extern crate clap;
 extern crate serde;
 extern crate toml;
+extern crate git2;
 mod config;
 mod git;
 mod tools;
