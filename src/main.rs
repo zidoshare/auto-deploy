@@ -1,10 +1,10 @@
 extern crate clap;
+extern crate git2;
 extern crate serde;
 extern crate toml;
-extern crate git2;
+extern crate url;
 mod config;
 mod git;
-mod tools;
 static DEFAULT_CONFIG_PATH: &str = "/etc/auto-deploy/config.toml";
 
 fn main() {
