@@ -12,7 +12,7 @@ java = "java"
 #git相关配置
 [git]
 remote = "origin"
-branch = "test"
+branch = "master"
 prefix = "git@github.com/xxx"
 username = "wuhongxu1208@gmail.com"
 password = "xxx"

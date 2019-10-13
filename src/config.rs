@@ -14,6 +14,8 @@ static ARG_LOCATION_JAVA: &str = "location-java";
 static ARG_GIT_REMOTE: &str = "git-remote";
 static ARG_GIT_BRANCH: &str = "git-branch";
 static ARG_GIT_PREFIX: &str = "git-prefix";
+static ARG_GIT_NAME: &str = "git-name";
+static ARG_GIT_EMAIL: &str = "git-password";
 static ARG_GIT_USERNAME: &str = "git-username";
 static ARG_GIT_PASSWORD: &str = "git-password";
 static ARG_MAVEN_BIN: &str = "maven-bin";
@@ -47,6 +49,8 @@ pub struct GitProps {
     pub remote: String,
     pub branch: String,
     pub prefix: String,
+    pub name: Option<String>,
+    pub email: Option<String>,
     pub username: Option<String>,
     pub password: Option<String>,
 }
@@ -116,10 +120,18 @@ pub fn get_config(default_config_path: &str) -> DeployConfig {
                 .value_of(ARG_GIT_PREFIX)
                 .and_then(|s| Some(String::from(s)))
                 .unwrap_or(global_config.git.prefix),
+            name: (&matches)
+                .value_of(ARG_GIT_NAME)
+                .and_then(|s| Some(String::from(s)))
+                .or(global_config.git.username),
+            email: (&matches)
+                .value_of(ARG_GIT_EMAIL)
+                .and_then(|s| Some(String::from(s)))
+                .or(global_config.git.name),
             username: (&matches)
                 .value_of(ARG_GIT_USERNAME)
                 .and_then(|s| Some(String::from(s)))
-                .or(global_config.git.username),
+                .or(global_config.git.email),
             password: (&matches)
                 .value_of(ARG_GIT_PASSWORD)
                 .and_then(|s| Some(String::from(s)))
