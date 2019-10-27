@@ -14,6 +14,8 @@ java = "java"
 remote = "origin"
 branch = "master"
 prefix = "git@github.com/xxx"
+name = "zido"
+email = "wuhongxu1208@gmail.com"
 username = "wuhongxu1208@gmail.com"
 password = "xxx"
 #maven相关配置

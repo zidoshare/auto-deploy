@@ -6,13 +6,15 @@ use std::path;
 use std::process::Command;
 use std::str;
 
-struct Git {
+struct Git<'a> {
+    //save user git cred
     cred: Option<git2::Cred>,
     signature: Option<git2::Signature<'static>>,
+    config: &'a config::GitProps,
 }
 
-impl Git {
-    pub fn new(config: &config::GitProps) -> Self {
+impl<'a> Git<'a> {
+    pub fn new(config: &'a config::GitProps) -> Self {
         let cred: Option<git2::Cred> = if config.username.is_some() && config.password.is_some() {
             Some(
                 git2::Cred::userpass_plaintext(
@@ -27,27 +29,27 @@ impl Git {
         Git {
             cred,
             signature: None,
+            config,
         }
     }
-    //need provide git path and local project path
+    //need provide git project and local project path
     #[allow(dead_code)]
     pub fn pull_projects(
         &self,
-        remote_git_path: &str,
+        project: &str,
         local_project_path: &std::path::Path,
-        config: &config::DeployConfig,
     ) -> Result<(), git2::Error> {
+        let remote_git_path = format!("{}/{}.git", self.config.prefix, project);
+        println!("remote git path:{}", remote_git_path);
         let mut callbacks = git2::RemoteCallbacks::new();
         callbacks.credentials(|_user: &str, _user_from_url: Option<&str>, _cred| {
             if _cred.contains(git2::CredentialType::USERNAME) {
                 return git2::Cred::userpass_plaintext(
-                    config
-                        .git
+                    self.config
                         .username
                         .as_ref()
                         .expect("the git server need provide username"),
-                    config
-                        .git
+                    self.config
                         .password
                         .as_ref()
                         .expect("the git server need provide password"),
@@ -63,9 +65,14 @@ impl Git {
                     );
                     git2::Cred::ssh_key(user, None, path::Path::new(&k), None)
                 }
-                _ => Err(git2::Error::from_str(
-                    "unable to get private key from AUTO_DEPLOY_SSH_KEY",
-                )),
+                _ => {
+                    let mut ssh_path = env::home_dir().unwrap();
+                    ssh_path.push(".ssh/id_rsa");
+                    git2::Cred::ssh_key(user, None, &ssh_path, None)
+                    //     Err(git2::Error::from_str(
+                    //     "unable to get private key from AUTO_DEPLOY_SSH_KEY and",
+                    // ))
+                }
             }
         });
         callbacks.sideband_progress(|data| {
@@ -106,8 +113,8 @@ impl Git {
         if local_project_path.exists() {
             let repo = git2::Repository::open(local_project_path)?;
             let mut remote = repo
-                .find_remote(&config.git.remote)
-                .or_else(|_| (&repo).remote_anonymous(&config.git.remote))?;
+                .find_remote(&self.config.remote)
+                .or_else(|_| (&repo).remote_anonymous(&self.config.remote))?;
             let mut fo = git2::FetchOptions::new();
             fo.remote_callbacks(callbacks);
             remote.download(&[], Some(&mut fo))?;
@@ -140,9 +147,9 @@ impl Git {
 
             let mut builder = git2::build::RepoBuilder::new();
             builder.fetch_options(opts);
-            builder.branch(&config.git.branch);
+            builder.branch(&self.config.branch);
 
-            builder.clone(remote_git_path, local_project_path)?;
+            builder.clone(&remote_git_path, local_project_path)?;
         }
         Ok(())
     }
@@ -202,13 +209,19 @@ mod test {
     use crate::git::Git;
 
     #[test]
+    #[ignore]
     fn pull_projects_from_not_exists_project_should_return_false() {
-        Git::new(&config::get_config("").git)
-            .pull_projects(
-                "git@github.com:/zidoshare/zicoder",
-                std::path::Path::new("./test"),
-                &config::get_config("example/example.toml"),
-            )
-            .unwrap();
+        Git::new(&config::GitProps {
+            remote: String::from("origin"),
+            branch: String::from("master"),
+            prefix: String::from("git@github.com:zidoshare"),
+            name: Some(String::from("zido")),
+            email: Some(String::from("wuhongxu1208@gmail.com")),
+            username: None,
+            password: None,
+        })
+        .pull_projects("zicode-script.js", std::path::Path::new("./test"))
+        .unwrap();
+        std::fs::remove_dir(std::path::Path::new("./test")).unwrap();
     }
 }
