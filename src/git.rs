@@ -34,10 +34,10 @@ impl<'a> Git<'a> {
     }
     //need provide git project and local project path
     #[allow(dead_code)]
-    pub fn pull_projects(
+    pub fn pull_projects<'b> (
         &self,
-        project: &str,
-        local_project_path: &std::path::Path,
+        project: &'b str,
+        local_project_path: &'b std::path::Path,
     ) -> Result<(), git2::Error> {
         let remote_git_path = format!("{}/{}.git", self.config.prefix, project);
         println!("remote git path:{}", remote_git_path);

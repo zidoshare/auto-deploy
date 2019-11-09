@@ -13,3 +13,6 @@ serde = { version = "1.0.101", features = ["derive"] }
 serde_derive = "1.0.101"
 git2 = "0.10.1"
 url = "2.1.0"
+java-properties="1.2.0"
+yaml-rust = "0.4"
+quick-xml = "0.17.0"
