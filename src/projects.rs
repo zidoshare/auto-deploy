@@ -40,8 +40,7 @@ pub fn fixPackageName<'a>(pomFile: &'a File, packageName: &'a str) {
     let mut reader = Reader::from_reader(BufReader::new(pomFile));
     reader.trim_text(true);
     let mut vec: Vec<Event> = vec![];
-    let stream = BufWriter::new(pomFile);
-    let mut writer = Writer::new(stream);
+    let mut writer = Writer::new(BufWriter::new(pomFile));
     let mut buf = Vec::new();
     let mut needWrite = false;
     loop {
@@ -63,12 +62,13 @@ pub fn fixPackageName<'a>(pomFile: &'a File, packageName: &'a str) {
                             println!("finalName is correct and does not need to be fixed");
                         }
                     }
+                } else {
+                    vec.push(e.into_owned());
                 }
-                vec.push(e.to_owned());
-                buf.clear();
             }
             Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
         }
+        buf.clear();
     }
     if (needWrite) {}
 }
