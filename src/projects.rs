@@ -1,26 +1,39 @@
 use java_properties;
-use quick_xml::events::{BytesEnd, BytesStart, Event};
+use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::{Reader, Writer};
-use std::fs::File;
-use std::io::{BufReader, BufWriter};
+use std::fs::{self, File};
+use std::io::{BufReader, BufWriter, Cursor};
+use std::str;
 use yaml_rust;
+static INVALID_END_PATH_VEC: &[char] = &['/', '\\'];
 //// validate project path,eg. application-${env}.properties
 ///  and set application.profiles to ${env}.
 ///
 /// # Example:
 /// ```rust
 /// let project_path = "/data/some-server";
-/// validateProject(project_path,"test");
+/// validate_project(project_path,"test");
 /// ```
 ///
 /// # with submodule starter
 /// ```rust
 /// let project_path = "/data/parent-module/sub-module";
-/// validateProject(project_path,"test");
+/// validate_project(project_path,"test");
 /// ```
-pub fn validateProject(project_path: &str, env: &str) {
+pub fn validate_project<'a>(project_path: &'a str, env: &'a str) {
     //find deploy application.project,application-${env}.properties
     println!("validate project...");
+
+    let project_path = project_path.trim_end_matches(INVALID_END_PATH_VEC);
+    let mut project_name: Vec<char> = Vec::new();
+    for c in project_path.chars().rev() {
+        if c == '/' || c == '\\' {
+            break;
+        }
+        project_name.push(c);
+    }
+    project_name.reverse();
+    let project_name: String = project_name.into_iter().collect();
     let propertiesFile = File::open(format!(
         "{}/src/main/resources/application-{}.properties",
         project_path, env
@@ -32,43 +45,63 @@ pub fn validateProject(project_path: &str, env: &str) {
         ))
         .expect("the properties file: application.properties or application.yml is not exists")
     });
-    let pom = File::open(format!("{}/pom.xml", project_path))
-        .expect("the pom file: pom.xml is not exists");
+    fix_package_name(&format!("{}/pom.xml", project_path), &project_name);
 }
 
-pub fn fixPackageName<'a>(pomFile: &'a File, packageName: &'a str) {
-    let mut reader = Reader::from_reader(BufReader::new(pomFile));
+fn fix_package_name<'a>(pom_file: &'a str, package_name: &'a str) {
+    let content = fix_package_name_from_str(&fs::read_to_string(pom_file).unwrap(), package_name);
+    fs::write(pom_file, content).unwrap();
+}
+fn fix_package_name_from_str<'a>(content: &'a str, package_name: &'a str) -> String {
+    let mut reader = Reader::from_str(content);
     reader.trim_text(true);
-    let mut vec: Vec<Event> = vec![];
-    let mut writer = Writer::new(BufWriter::new(pomFile));
+    let mut writer = Writer::new(Cursor::new(Vec::new()));
+    let mut need_write = false;
     let mut buf = Vec::new();
-    let mut needWrite = false;
     loop {
         match reader.read_event(&mut buf) {
             Ok(Event::Eof) => break,
             Ok(ref e) => {
+                writer.write_event(e).unwrap();
                 if let Event::Start(ref x) = e {
                     if x.name() == b"finalName" {
-                        let finalName = &reader.read_text(x.name(), &mut Vec::new()).expect(
+                        let final_name = &reader.read_text(x.name(), &mut Vec::new()).expect(
                             "cannot decode project final name in tag: <finalName>xxx</finalName>",
                         );
-                        if finalName != packageName {
+                        if final_name != package_name {
                             println!(
                                 "this current finalName is {},and fix to {}",
-                                finalName, packageName
+                                final_name, package_name
                             );
-                            needWrite = true;
+                            need_write = true;
+                            writer
+                                .write_event(Event::Text(BytesText::from_plain_str(package_name)))
+                                .unwrap();
                         } else {
                             println!("finalName is correct and does not need to be fixed");
                         }
                     }
-                } else {
-                    vec.push(e.into_owned());
                 }
             }
             Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
         }
         buf.clear();
     }
-    if (needWrite) {}
+    if (need_write) {
+        String::from_utf8(writer.into_inner().into_inner()).unwrap()
+    } else {
+        content.to_owned()
+    }
+}
+
+#[test]
+fn when_final_name_not_match_then_fix_it() {
+    let content = fs::read_to_string("./tests/pom.xml").unwrap();
+    let content = fix_package_name_from_str(&content, "test_1");
+    println!("{}", content.find("test_1").unwrap());
+    assert!(content.find("test_1").unwrap() == 493);
+}
+#[test]
+fn when_final_name_not_exists_then_fix_it() {
+    //TODO  when final name not exists then fix it
 }

@@ -34,7 +34,7 @@ impl<'a> Git<'a> {
     }
     //need provide git project and local project path
     #[allow(dead_code)]
-    pub fn pull_projects<'b> (
+    pub fn pull_projects<'b>(
         &self,
         project: &'b str,
         local_project_path: &'b std::path::Path,
