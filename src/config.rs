@@ -33,6 +33,7 @@ pub struct DeployConfig {
     pub maven: MavenProps,
     pub package: PackageProps,
     pub dependencies: DependenciesProps,
+    pub projects: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -164,6 +165,11 @@ pub fn get_config(default_config_path: &str) -> DeployConfig {
                 global_config.dependencies.update
             },
         },
+        projects: if let Some(projects) = (&matches).values_of(CONSTANTS_PROJECTS) {
+            projects.map(|s| String::from(s)).collect()
+        } else {
+            panic!("need provide projects")
+        },
     }
 }
 
@@ -258,6 +264,7 @@ fn get_app_args<'a>() -> clap::ArgMatches<'a> {
             多个依赖使用逗号隔开,形如:\n site.zido:demo:-1.0.1,site.zido:demo2:0.0.2"))
         .arg(Arg::with_name(CONSTANTS_PROJECTS)
             .value_name("项目名")
+            .required(true)
             .multiple(true)
             .help("设置发布项目名，支持多模块项目,多级项目情况下需要指定到具体模块名,\n形如: app/starter"))
         .get_matches()
@@ -266,6 +273,7 @@ fn get_app_args<'a>() -> clap::ArgMatches<'a> {
 #[cfg(test)]
 mod test {
     use crate::config::*;
+    use clap;
 
     #[test]
     #[should_panic(expected = "配置文件错误:无法访问./xxx")]
@@ -283,6 +291,23 @@ mod test {
     fn get_config_from_toml_missing_some_options_should_works() {
         let config = get_config("./example/missing_works.toml");
         assert_eq!("test", config.package.env);
+    }
+
+    #[test]
+    fn clap_with_no_arg_name() {
+        let m = App::new("myapp")
+            .arg(
+                Arg::with_name("output")
+                    .short("o")
+                    .required(false)
+                    .multiple(true)
+                    .takes_value(true),
+            )
+            .get_matches_from(vec!["myapp", "-o", "val1", "val2"]);
+        let mut values = m.values_of("output").unwrap();
+        assert_eq!(values.next(), Some("val1"));
+        assert_eq!(values.next(), Some("val2"));
+        assert_eq!(values.next(), None);
     }
 
     #[test]

@@ -149,14 +149,14 @@ impl<'a> Git<'a> {
             builder.fetch_options(opts);
             builder.branch(&self.config.branch);
 
-            builder.clone(&remote_git_path, local_project_path)?;
+            let repo = builder.clone(&remote_git_path, local_project_path)?;
         }
+
         Ok(())
     }
 }
 
 // execute git config --global user.email
-#[allow(dead_code)]
 pub fn assert_name(name: &str) {
     let output = Command::new("git")
         .arg("config")
@@ -210,7 +210,7 @@ mod test {
 
     #[test]
     #[ignore]
-    fn pull_projects_from_not_exists_project_should_return_false() {
+    fn pull_projects_from_exists_project_should_works() {
         Git::new(&config::GitProps {
             remote: String::from("origin"),
             branch: String::from("master"),
@@ -222,6 +222,51 @@ mod test {
         })
         .pull_projects("zicode-script.js", std::path::Path::new("./test"))
         .unwrap();
-        std::fs::remove_dir(std::path::Path::new("./test")).unwrap();
+        std::fs::remove_dir(std::path::Path::new("./test")).expect(
+            "clone or pull project from github error,the path of target:./test is not exists",
+        );
+    }
+    #[test]
+    #[should_panic]
+    fn pull_projects_from_not_exists_project_should_not_work() {
+        Git::new(&config::GitProps {
+            remote: String::from("origin"),
+            branch: String::from("master"),
+            prefix: String::from("git@github.com:zidoshare"),
+            name: Some(String::from("zido")),
+            email: Some(String::from("wuhongxu1208@gmail.com")),
+            username: None,
+            password: None,
+        })
+        .pull_projects("not_exists_project", std::path::Path::new("./test"))
+        .unwrap();
+    }
+
+    #[test]
+    fn pull_projects_from_exists_folder_should_exec_pull() {
+        let test_path = std::path::Path::new("./test");
+        //clear source
+        std::fs::remove_dir(&test_path).expect(
+            "clone or pull project from github error,the path of target:./test is not exists",
+        );
+        let config = config::GitProps {
+            remote: String::from("origin"),
+            branch: String::from("master"),
+            prefix: String::from("git@github.com:zidoshare"),
+            name: Some(String::from("zido")),
+            email: Some(String::from("wuhongxu1208@gmail.com")),
+            username: None,
+            password: None,
+        };
+        //clone projects
+        Git::new(&config)
+            .pull_projects("zicode-script.js", std::path::Path::new("./test"))
+            .unwrap();
+        assert!(test_path.exists());
+        // git pull projects
+        Git::new(&config)
+            .pull_projects("zicode-script.js", &test_path)
+            .unwrap();
+        assert!(test_path.exists());
     }
 }
