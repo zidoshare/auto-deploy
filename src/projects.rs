@@ -1,6 +1,6 @@
 use java_properties;
 use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
-use quick_xml::{Reader, Writer};
+use quick_xml::{Error, Reader, Writer};
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Cursor};
 use std::str;
@@ -57,14 +57,15 @@ fn fix_package_name_from_str<'a>(content: &'a str, package_name: &'a str) -> Str
     reader.trim_text(true);
     let mut writer = Writer::new(Cursor::new(Vec::new()));
     let mut need_write = false;
+    let mut finded_final_name = false;
     let mut buf = Vec::new();
     loop {
         match reader.read_event(&mut buf) {
             Ok(Event::Eof) => break,
             Ok(ref e) => {
-                writer.write_event(e).unwrap();
                 if let Event::Start(ref x) = e {
                     if x.name() == b"finalName" {
+                        finded_final_name = true;
                         let final_name = &reader.read_text(x.name(), &mut Vec::new()).expect(
                             "cannot decode project final name in tag: <finalName>xxx</finalName>",
                         );
@@ -74,20 +75,41 @@ fn fix_package_name_from_str<'a>(content: &'a str, package_name: &'a str) -> Str
                                 final_name, package_name
                             );
                             need_write = true;
+                            writer.write_event(e).unwrap();
                             writer
                                 .write_event(Event::Text(BytesText::from_plain_str(package_name)))
                                 .unwrap();
+                            writer
+                                .write_event(Event::End(BytesEnd::owned(x.name().to_vec())))
+                                .unwrap();
+                            continue;
                         } else {
                             println!("finalName is correct and does not need to be fixed");
                         }
                     }
+                } else if let Event::End(ref x) = e {
+                    if x.name() == b"build" && finded_final_name == false {
+                        writer
+                            .write_event(Event::Start(BytesStart::owned(
+                                b"finalName".to_vec(),
+                                "finalName".len(),
+                            )))
+                            .unwrap();
+                        writer
+                            .write_event(Event::Text(BytesText::from_plain_str(package_name)))
+                            .unwrap();
+                        writer
+                            .write_event(Event::End(BytesEnd::owned(b"finalName".to_vec())))
+                            .unwrap();
+                    }
                 }
+                writer.write_event(e).unwrap();
             }
             Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
         }
         buf.clear();
     }
-    if (need_write) {
+    if need_write {
         String::from_utf8(writer.into_inner().into_inner()).unwrap()
     } else {
         content.to_owned()
@@ -97,11 +119,22 @@ fn fix_package_name_from_str<'a>(content: &'a str, package_name: &'a str) -> Str
 #[test]
 fn when_final_name_not_match_then_fix_it() {
     let content = fs::read_to_string("./tests/pom.xml").unwrap();
+    assert_eq!(557, content.find("demo-test").unwrap());
     let content = fix_package_name_from_str(&content, "test_1");
-    println!("{}", content.find("test_1").unwrap());
-    assert!(content.find("test_1").unwrap() == 493);
+    assert_eq!(493, content.find("test_1").unwrap());
 }
 #[test]
 fn when_final_name_not_exists_then_fix_it() {
-    //TODO  when final name not exists then fix it
+    let content = fs::read_to_string("./tests/pom-with-no-final-name.xml").unwrap();
+    let content = fix_package_name_from_str(&content, "test_1");
+    println!("{}", content);
+    assert_eq!(493, content.find("test_1").unwrap());
+}
+
+#[test]
+fn when_final_name_matches_then_dont_fix_it() {
+    let content = fs::read_to_string("./tests/pom.xml").unwrap();
+    assert_eq!(557, content.find("demo-test").unwrap());
+    let content = fix_package_name_from_str(&content, "demo-test");
+    assert_eq!(557, content.find("demo-test").unwrap());
 }
