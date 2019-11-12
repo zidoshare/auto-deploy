@@ -1,0 +1,13 @@
+sudo: true
+language: rust
+rust:
+  - stable
+  - 1.39.0
+os:
+  - linux
+  - osx
+addons:
+  apt:
+    packages:
+      - libssl-dev
+cache: cargo
