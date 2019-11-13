@@ -1,6 +1,6 @@
 # auto-deploy
-
-java maven 项目服务器构建部署工具，适合小型单机项目，约定优于配置
+[![Build Status](https://travis-ci.com/zidoshare/auto-deploy.svg?branch=master)](https://travis-ci.com/zidoshare/auto-deploy)
+> java maven 项目服务器构建部署工具，适合小型单机项目，约定优于配置
 
 尽量不需要安装其他工具，内置git
 
