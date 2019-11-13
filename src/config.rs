@@ -33,7 +33,7 @@ pub struct DeployConfig {
     pub maven: MavenProps,
     pub package: PackageProps,
     pub dependencies: DependenciesProps,
-    pub projects: Vec<String>,
+    pub projects: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -166,7 +166,7 @@ pub fn get_config(default_config_path: &str) -> DeployConfig {
             },
         },
         projects: if let Some(projects) = (&matches).values_of(CONSTANTS_PROJECTS) {
-            projects.map(|s| String::from(s)).collect()
+            Some(projects.map(|s| String::from(s)).collect())
         } else {
             panic!("need provide projects")
         },
@@ -184,96 +184,104 @@ fn get_config_from_toml<'a, P: AsRef<Path>>(path: P) -> DeployConfig {
 fn get_app_args<'a>() -> clap::ArgMatches<'a> {
     let absolute_path = "绝对路径";
     let relative_path = "相对路径";
-    App::new("auto-deploy")
-        .version(crate_version!())
-        .author("zido. <wuhongxu1208@gmail.com>")
-        .about("自动发布项目到服务器，包含从git拉取->校验并构建项目->备份原版本->发布/回滚新版本")
-        .arg(Arg::with_name(ARG_CONFIG)
-            .short("c")
-            .long(ARG_CONFIG)
-            .value_name("配置文件路径")
-            .takes_value(true)
-            .help("设置配置文件路径"))
-        .arg(Arg::with_name(ARG_LOCATION_PROJECTS)
-            .long(ARG_LOCATION_PROJECTS)
-            .value_name(absolute_path)
-            .help("设置项目所在目录")
-            .takes_value(true))
-        .arg(Arg::with_name(ARG_LOCATION_BIN)
-            .long(ARG_LOCATION_BIN)
-            .value_name(absolute_path)
-            .takes_value(true)
-            .help("项目可执行文件所在目录"))
-        .arg(Arg::with_name(ARG_LOCATION_LOG)
-            .long(ARG_LOCATION_LOG)
-            .value_name(absolute_path)
-            .takes_value(true)
-            .help("日志文件所在目录"))
-        .arg(Arg::with_name(ARG_LOCATION_TMP)
-            .long(ARG_LOCATION_TMP)
-            .value_name(absolute_path)
-            .takes_value(true)
-            .help("原可执行文件的备份文件所在路径"))
-        .arg(Arg::with_name(ARG_LOCATION_JAVA)
-            .long(ARG_LOCATION_JAVA)
-            .value_name(absolute_path)
-            .takes_value(true)
-            .help("java bin执行路径"))
-        .arg(Arg::with_name(ARG_GIT_REMOTE)
-            .long(ARG_GIT_REMOTE)
-            .value_name("仓库名")
-            .takes_value(true)
-            .help("git远程仓库名"))
-        .arg(Arg::with_name(ARG_GIT_BRANCH)
-            .long(ARG_GIT_BRANCH)
-            .value_name("分支名")
-            .help("设置git远程分支名"))
-        .arg(Arg::with_name(ARG_GIT_PREFIX)
-            .long(ARG_GIT_PREFIX)
-            .value_name("url前缀")
-            .help("设置git的url前缀，例如 git@github.com/github.com/xxx"))
-        .arg(Arg::with_name(ARG_GIT_USERNAME)
-            .long(ARG_GIT_USERNAME)
-            .value_name("username")
-            .help("Sets username for git"))
-        .arg(Arg::with_name(ARG_GIT_PASSWORD)
-            .long(ARG_GIT_PASSWORD)
-            .value_name("password")
-            .help("Sets password for git"))
-        .arg(Arg::with_name(ARG_MAVEN_BIN)
-            .long(ARG_MAVEN_BIN)
-            .value_name(absolute_path)
-            .help("maven可执行文件路径"))
-        .arg(Arg::with_name(ARG_MAVEN_REPOSITORY)
-            .long(ARG_MAVEN_REPOSITORY)
-            .value_name(absolute_path)
-            .help("maven仓库目录"))
-        .arg(Arg::with_name(ARG_PACKAGE_ENV)
-            .long(ARG_PACKAGE_ENV)
-            .value_name("环境名")
-            .help("当前执行环境名,对应spring.profiles.active"))
-        .arg(Arg::with_name(ARG_PACKAGE_TARGET)
-            .long(ARG_PACKAGE_TARGET)
-            .value_name(relative_path)
-            .help("项目/模块内构建结果目录"))
-        .arg(Arg::with_name(ARG_DEPENDENCIES_UPDATE)
-            .long(ARG_DEPENDENCIES_UPDATE)
-            .value_name("依赖集合")
-            .required(false)
-            .help("项目所需要强制更新的依赖,采用gradle形式版本,\
-            多个依赖使用逗号隔开,形如:\n site.zido:demo:-1.0.1,site.zido:demo2:0.0.2"))
-        .arg(Arg::with_name(CONSTANTS_PROJECTS)
-            .value_name("项目名")
-            .required(true)
-            .multiple(true)
-            .help("设置发布项目名，支持多模块项目,多级项目情况下需要指定到具体模块名,\n形如: app/starter"))
-        .get_matches()
+    with_matches(App::new("auto-deploy")
+    .version(crate_version!())
+    .author("zido. <wuhongxu1208@gmail.com>")
+    .about("自动发布项目到服务器，包含从git拉取->校验并构建项目->备份原版本->发布/回滚新版本")
+    .arg(Arg::with_name(ARG_CONFIG)
+        .short("c")
+        .long(ARG_CONFIG)
+        .value_name("配置文件路径")
+        .takes_value(true)
+        .help("设置配置文件路径"))
+    .arg(Arg::with_name(ARG_LOCATION_PROJECTS)
+        .long(ARG_LOCATION_PROJECTS)
+        .value_name(absolute_path)
+        .help("设置项目所在目录")
+        .takes_value(true))
+    .arg(Arg::with_name(ARG_LOCATION_BIN)
+        .long(ARG_LOCATION_BIN)
+        .value_name(absolute_path)
+        .takes_value(true)
+        .help("项目可执行文件所在目录"))
+    .arg(Arg::with_name(ARG_LOCATION_LOG)
+        .long(ARG_LOCATION_LOG)
+        .value_name(absolute_path)
+        .takes_value(true)
+        .help("日志文件所在目录"))
+    .arg(Arg::with_name(ARG_LOCATION_TMP)
+        .long(ARG_LOCATION_TMP)
+        .value_name(absolute_path)
+        .takes_value(true)
+        .help("原可执行文件的备份文件所在路径"))
+    .arg(Arg::with_name(ARG_LOCATION_JAVA)
+        .long(ARG_LOCATION_JAVA)
+        .value_name(absolute_path)
+        .takes_value(true)
+        .help("java bin执行路径"))
+    .arg(Arg::with_name(ARG_GIT_REMOTE)
+        .long(ARG_GIT_REMOTE)
+        .value_name("仓库名")
+        .takes_value(true)
+        .help("git远程仓库名"))
+    .arg(Arg::with_name(ARG_GIT_BRANCH)
+        .long(ARG_GIT_BRANCH)
+        .value_name("分支名")
+        .help("设置git远程分支名"))
+    .arg(Arg::with_name(ARG_GIT_PREFIX)
+        .long(ARG_GIT_PREFIX)
+        .value_name("url前缀")
+        .help("设置git的url前缀，例如 git@github.com/github.com/xxx"))
+    .arg(Arg::with_name(ARG_GIT_USERNAME)
+        .long(ARG_GIT_USERNAME)
+        .value_name("username")
+        .help("Sets username for git"))
+    .arg(Arg::with_name(ARG_GIT_PASSWORD)
+        .long(ARG_GIT_PASSWORD)
+        .value_name("password")
+        .help("Sets password for git"))
+    .arg(Arg::with_name(ARG_MAVEN_BIN)
+        .long(ARG_MAVEN_BIN)
+        .value_name(absolute_path)
+        .help("maven可执行文件路径"))
+    .arg(Arg::with_name(ARG_MAVEN_REPOSITORY)
+        .long(ARG_MAVEN_REPOSITORY)
+        .value_name(absolute_path)
+        .help("maven仓库目录"))
+    .arg(Arg::with_name(ARG_PACKAGE_ENV)
+        .long(ARG_PACKAGE_ENV)
+        .value_name("环境名")
+        .help("当前执行环境名,对应spring.profiles.active"))
+    .arg(Arg::with_name(ARG_PACKAGE_TARGET)
+        .long(ARG_PACKAGE_TARGET)
+        .value_name(relative_path)
+        .help("项目/模块内构建结果目录"))
+    .arg(Arg::with_name(ARG_DEPENDENCIES_UPDATE)
+        .long(ARG_DEPENDENCIES_UPDATE)
+        .value_name("依赖集合")
+        .required(false)
+        .help("项目所需要强制更新的依赖,采用gradle形式版本,\
+        多个依赖使用逗号隔开,形如:\n site.zido:demo:-1.0.1,site.zido:demo2:0.0.2"))
+    .arg(Arg::with_name(CONSTANTS_PROJECTS)
+        .value_name("项目名")
+        .required(true)
+        .multiple(true)
+        .help("设置发布项目名，支持多模块项目,多级项目情况下需要指定到具体模块名,\n形如: app/starter")))
+}
+
+#[cfg(not(test))]
+fn with_matches<'a, 'b>(app: clap::App<'a, 'b>) -> clap::ArgMatches<'a> {
+    app.get_matches()
+}
+
+#[cfg(test)]
+fn with_matches<'a, 'b>(app: clap::App<'a, 'b>) -> clap::ArgMatches<'a> {
+    app.get_matches_from(vec!["auto-deploy", "project-demo-2"])
 }
 
 #[cfg(test)]
 mod test {
     use crate::config::*;
-    use clap;
 
     #[test]
     #[should_panic(expected = "配置文件错误:无法访问./xxx")]
@@ -319,7 +327,7 @@ mod test {
         assert_eq!("/home/zido/java/bin/.temps", config.location.tmp);
         assert_eq!("java", config.location.java);
         assert_eq!("origin", config.git.remote);
-        assert_eq!("test", config.git.branch);
+        assert_eq!("master", config.git.branch);
         assert_eq!("git@github.com/xxx", config.git.prefix);
         assert_eq!("wuhongxu1208@gmail.com", config.git.username.unwrap());
         assert_eq!("xxx", config.git.password.unwrap());

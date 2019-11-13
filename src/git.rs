@@ -3,7 +3,6 @@ use git2;
 use std::env;
 use std::io::{self, Write};
 use std::path;
-use std::process::Command;
 use std::str;
 
 struct Git<'a> {
@@ -156,53 +155,6 @@ impl<'a> Git<'a> {
     }
 }
 
-// execute git config --global user.email
-pub fn assert_name(name: &str) {
-    let output = Command::new("git")
-        .arg("config")
-        .arg("--global")
-        .arg("--get")
-        .arg("user.name")
-        .output()
-        .expect(
-            "fail to get user.name from git, the command: \"git config --global --get user.name\"",
-        );
-    if output.status.success() && name.as_bytes() != output.stdout.as_slice() {
-        println!("set git user.name to {}", name);
-        Command::new("git")
-            .arg("config")
-            .arg("--global")
-            .arg("user.name")
-            .arg(name)
-            .spawn()
-            .expect(&format!("fail to set user.name to {}", name));
-    }
-}
-
-// execute git config --global user.email
-#[allow(dead_code)]
-pub fn assert_email(email: &str) {
-    let output = Command::new("git")
-        .arg("config")
-        .arg("--global")
-        .arg("--get")
-        .arg("user.email")
-        .output()
-        .expect(
-            "fail to get user.email from git, the command: \"git config --global --get user.email\"",
-        );
-    if output.status.success() && (email.as_bytes() != output.stdout.as_slice()) {
-        println!("set git user.email to {}", email);
-        Command::new("git")
-            .arg("config")
-            .arg("--global")
-            .arg("user.email")
-            .arg(email)
-            .spawn()
-            .expect(&format!("fail to set user.email to {}", email));
-    }
-}
-
 #[cfg(test)]
 mod test {
     use crate::config;
@@ -243,12 +195,13 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn pull_projects_from_exists_folder_should_exec_pull() {
         let test_path = std::path::Path::new("./test");
         //clear source
-        std::fs::remove_dir(&test_path).expect(
-            "clone or pull project from github error,the path of target:./test is not exists",
-        );
+        if test_path.exists() {
+            std::fs::remove_dir_all(&test_path).unwrap();
+        }
         let config = config::GitProps {
             remote: String::from("origin"),
             branch: String::from("master"),
@@ -268,5 +221,9 @@ mod test {
             .pull_projects("zicode-script.js", &test_path)
             .unwrap();
         assert!(test_path.exists());
+        //clear source
+        if test_path.exists() {
+            std::fs::remove_dir_all(&test_path).unwrap();
+        }
     }
 }

@@ -127,7 +127,6 @@ fn when_final_name_not_match_then_fix_it() {
 fn when_final_name_not_exists_then_fix_it() {
     let content = fs::read_to_string("./tests/pom-with-no-final-name.xml").unwrap();
     let content = fix_package_name_from_str(&content, "test_1");
-    println!("{}", content);
     assert_eq!(493, content.find("test_1").unwrap());
 }
 
